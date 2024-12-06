@@ -1,0 +1,10 @@
+*.aux
+*.log
+*.out
+*.synctex.gz
+_minted*
+*.aux
+*.log
+*.synctex.gz
+data
+*.pth
