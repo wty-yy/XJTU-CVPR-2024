@@ -7,7 +7,7 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
-from torchvision.models.resnet import resnet50
+from torchvision.models import resnet
 
 # Tensorbaord日志
 path_log = Path(f"./logs/{time.strftime('%Y%m%d-%H%M%S')}")
@@ -43,7 +43,7 @@ train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 # 初始化模型、损失函数和优化器
-model = resnet50(num_classes=10).to(device)
+model = resnet._resnet(resnet.Bottleneck, [1, 2, 3, 1], None, True, num_classes=10).to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 global_step = 0
