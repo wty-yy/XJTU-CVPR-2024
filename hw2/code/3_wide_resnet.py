@@ -7,11 +7,11 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
-from torchvision.models import resnet
 from torchvision.transforms.autoaugment import AutoAugment, AutoAugmentPolicy
+from wide_resnet import WideResNet
 
 # Tensorbaord日志
-path_log = Path(f"./logs/{time.strftime('%Y%m%d-%H%M%S')}-resnet")
+path_log = Path(f"./logs/{time.strftime('%Y%m%d-%H%M%S')}-wide-resnet")
 writer = SummaryWriter(path_log)
 
 # 检查是否有可用 GPU
@@ -49,10 +49,11 @@ train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, nu
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=8)
 
 # 初始化模型、损失函数和优化器
-model = resnet._resnet(resnet.Bottleneck, [3, 5, 6, 3], None, True, num_classes=10).to(device)
+model = WideResNet(depth=28, width=10, num_classes=10).to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=weight_decay)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, len(train_loader) * num_epochs)
+# scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, [60, 120, 160], 0.2)
 global_step = 0
 best_eval_acc = 0
 
@@ -81,6 +82,8 @@ for epoch in range(num_epochs):
       writer.add_scalar("chart/learning_rate", scheduler.get_last_lr()[0], global_step)
       print(f"Epoch [{epoch + 1}/{num_epochs}], Step [{batch_idx + 1}/{len(train_loader)}], Loss: {loss.item():.4f}, Acc: {acc:.4f}")
 
+  # scheduler.step()
+
   # 测试模型
   model.eval()
   correct = 0
@@ -100,12 +103,16 @@ for epoch in range(num_epochs):
   if eval_acc > best_eval_acc:
     best_eval_acc = eval_acc
     # 保存最优eval模型
-    path_save_model = f"cifar10_resnet_model_best_eval.pth"
+    path_save_model = f"cifar10_wide_resnet_model_best_eval.pth"
     torch.save(model.state_dict(), path_log / path_save_model)
     print(f"Best eval model ({100*eval_acc:.2f}%) saved as {path_log / path_save_model}")
 
 # 保存模型
-path_save_model = f"cifar10_resnet_model_{global_step}.pth"
+path_save_model = f"cifar10_wide_resnet_model_{global_step}.pth"
 torch.save(model.state_dict(), path_log / path_save_model)
 print(f"Last model saved as {path_log / path_save_model}")
 print(f"Best eval accuracy {100 * best_eval_acc:.2f}%")
+
+# MultiStepLR: 71epoch 94.91%
+# Cos: 115epoch 94.86%
+# Cos + AutoAugment: 116epoch 96.44%

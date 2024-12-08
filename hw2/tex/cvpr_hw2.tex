@@ -1,6 +1,7 @@
 \documentclass[12pt, a4paper, oneside]{ctexart}
 \usepackage{amsmath, amsthm, amssymb, bm, color, graphicx, geometry, mathrsfs,extarrows, braket, booktabs, array, xcolor, fontspec, appendix, float, subfigure, wrapfig, enumitem, titlesec}
 \usepackage{tikz}
+\usepackage{tabularx}
 \usetikzlibrary{positioning}
 \usepackage[colorlinks,linkcolor=red,anchorcolor=blue,citecolor=blue,urlcolor=blue,menucolor=black]{hyperref}
 
@@ -244,6 +245,187 @@ z_{i,j} = \max_{p,q} x_{i+p,j+q},
 z = Wx + b,
 \]
 其中 $W$ 是权重矩阵，$b$ 是偏置项。
+
+\subsection{ResNet: 深度残差网络}
+
+ResNet（Residual Network）\footnote{\url{https://arxiv.org/pdf/1512.03385}}通过引入残差块（Residual Block）解决了深层神经网络的梯度消失和退化问题。其核心思想是学习残差函数 $F(x) := H(x) - x$，其中 $H(x)$ 是目标函数，$x$ 是输入。网络的基本单元为残差块，数学表达如下：
+
+\subsubsection{残差块公式}
+\[
+y = F(x, \{W_i\}) + x
+\]
+其中：
+\begin{itemize}
+    \item $x$ 是输入特征。
+    \item $F(x, \{W_i\})$ 是通过卷积、批归一化和激活函数计算得到的残差函数：
+    \[
+    F(x, \{W_i\}) = \sigma(W_2 \cdot \text{BatchNorm}(\sigma(W_1 \cdot x)))
+    \]
+    \item $W_1$ 和 $W_2$ 是卷积核权重。
+    \item $\sigma(\cdot)$ 是激活函数（通常为 ReLU）。
+\end{itemize}
+
+\subsubsection{ResNet 结构}
+ResNet 的总体结构可以表达为：
+\[
+h^{(l+1)} = h^{(l)} + F(h^{(l)}, \{W^{(l)}\})
+\]
+其中：
+\begin{itemize}
+    \item $h^{(l)}$ 是第 $l$ 层的特征。
+    \item $F(h^{(l)}, \{W^{(l)}\})$ 是第 $l$ 层的残差函数。
+\end{itemize}
+
+\subsubsection{网络深度}
+ResNet-18、ResNet-34 等通过堆叠多个残差块构建，网络的层数为：
+\[
+\text{总层数} = 2 \times \text{残差块数} + \text{输入输出层数}
+\]
+
+\subsubsection{瓶颈块（Bottleneck Block）}
+对于深层网络（如 ResNet-50、ResNet-101），使用瓶颈块减少参数量：
+\[
+F(x) = W_3 \cdot \sigma(W_2 \cdot \text{BatchNorm}(\sigma(W_1 \cdot x)))
+\]
+瓶颈块中：
+\begin{itemize}
+    \item $W_1$: 1x1 卷积，用于降维。
+    \item $W_2$: 3x3 卷积，用于特征提取。
+    \item $W_3$: 1x1 卷积，用于升维。
+\end{itemize}
+
+\subsection{Wide Residual Network (WideResNet)}
+
+Wide Residual Network (WideResNet)\footnote{\url{https://arxiv.org/pdf/1605.07146}} 
+是 ResNet 的一种变体，旨在通过增加网络宽度而不是深度来提高模型性能，同时降低训练复杂度。WideResNet 的主要公式如下：
+
+\begin{equation}
+x_{l+1} = x_l + \mathcal{F}(x_l, \{W_{l,i}\}),
+\end{equation}
+
+其中 $\mathcal{F}$ 表示残差映射（Residual Mapping），
+$\{W_{l,i}\}$ 表示第 $l$ 层的可学习参数集合。
+WideResNet 通过引入一个宽度因子 $k$ 来增加每层的通道数，
+即将 ResNet 的每层特征图数量扩展为 $k$ 倍。
+
+\subsubsection{WideResNet 与 ResNet 的区别}
+
+WideResNet 在设计上主要与 ResNet 有以下区别：
+\begin{itemize}
+    \item \textbf{宽度 vs. 深度}: ResNet 通过增加网络的深度来增强学习能力，
+    但过深的网络可能带来梯度消失或过拟合问题。
+    WideResNet 则通过增加每层的通道数（宽度因子 $k$）来提高网络的容量，
+    同时避免了过深网络的训练问题。
+    \item \textbf{简化的 Bottleneck 结构}: ResNet 在深层通常使用 Bottleneck 
+    结构（$1\times1$, $3\times3$, $1\times1$ 的卷积），
+    而 WideResNet 直接使用标准卷积层，从而简化了模型。
+    \item \textbf{减少深度}: WideResNet 显著降低了模型深度，
+    使得训练时间大幅减少。例如，WideResNet-28-10 指的是一个深度为 28，
+    宽度因子为 10 的 WideResNet。
+\end{itemize}
+
+\subsubsection{CIFAR-10 上使用 WideResNet}
+在 WideResNet 的原始论文中，WideResNet-28-10 在 CIFAR-10 数据集上达到了接近最优的性能，
+其错误率低至 3.8\%，显著优于传统的 ResNet。
+
+CIFAR-10 数据集是一个由 10 类小图像组成的数据集，每张图像的尺寸为 $32\times32$ 像素。
+WideResNet 在 CIFAR-10 上表现出色的原因包括：
+\begin{itemize}
+    \item \textbf{高效的特征表示}: 对于小尺寸图像，
+    增加网络的宽度（而非深度）可以更有效地捕获局部和全局特征，从而提升分类性能。
+    \item \textbf{优化效率}: CIFAR-10 数据集的样本较小，
+    WideResNet 的浅层网络结构能够显著减少训练时间，同时保持或超越深度网络的准确率。
+    \item \textbf{防止过拟合}: 在 CIFAR-10 这样的小型数据集上，
+    过深的网络容易过拟合，而 WideResNet 的较浅结构通过宽度扩展减少了这种风险。
+\end{itemize}
+
+\subsection{AutoAugmentPolicy 数据增强}
+
+AutoAugment\footnote{\url{http://arxiv.org/pdf/1805.09501}} 
+使用概率性数据增强策略提高模型的泛化能力。以下为 CIFAR-10 策略中的数据增强方法和数学描述。
+
+\subsubsection{数据增强方法列表}
+\begin{enumerate}
+    \item \textbf{Invert}: 将图像颜色取反。
+    \[
+    I'(x, y) = 255 - I(x, y)
+    \]
+    其中 $I(x, y)$ 是原始像素值，$I'(x, y)$ 是增强后的像素值。
+
+    \item \textbf{Contrast}: 调整对比度。令图像的平均亮度为 $\mu$，对比度调整公式为：
+    \[
+    I'(x, y) = \mu + \alpha \cdot (I(x, y) - \mu)
+    \]
+    其中 $\alpha$ 为增强强度。
+
+    \item \textbf{Rotate}: 图像旋转 $\theta$ 度：
+    \[
+    \begin{bmatrix}
+    x' \\ y'
+    \end{bmatrix}
+    =
+    \begin{bmatrix}
+    \cos\theta & -\sin\theta \\
+    \sin\theta & \cos\theta
+    \end{bmatrix}
+    \begin{bmatrix}
+    x \\ y
+    \end{bmatrix}
+    \]
+
+    \item \textbf{TranslateX / TranslateY}: 在水平 / 垂直方向上平移 $\Delta x$ 或 $\Delta y$ 像素：
+    \[
+    I'(x + \Delta x, y + \Delta y) = I(x, y)
+    \]
+
+    \item \textbf{Sharpness}: 调整图像锐化程度，使用卷积核增强边缘信息。
+
+    \item \textbf{ShearX / ShearY}: 图像沿 X / Y 轴剪切：
+    \[
+    \begin{bmatrix}
+    x' \\ y'
+    \end{bmatrix}
+    =
+    \begin{bmatrix}
+    1 & \lambda_x \\
+    \lambda_y & 1
+    \end{bmatrix}
+    \begin{bmatrix}
+    x \\ y
+    \end{bmatrix}
+    \]
+    其中 $\lambda_x, \lambda_y$ 为剪切强度。
+
+    \item \textbf{AutoContrast}: 自动调整对比度，使像素值覆盖整个动态范围。
+
+    \item \textbf{Equalize}: 直方图均衡化：
+    \[
+    H'(v) = \left\lfloor \frac{\text{CDF}(v) - \text{CDF}_{\text{min}}}{1 - \text{CDF}_{\text{min}}} \cdot (L - 1) \right\rfloor
+    \]
+    其中 $\text{CDF}(v)$ 是像素值 $v$ 的累计分布函数。
+
+    \item \textbf{Posterize}: 降低图像的色深：
+    \[
+    I'(x, y) = \lfloor \frac{I(x, y)}{2^b} \rfloor \cdot 2^b
+    \]
+    其中 $b$ 为剩余位数。
+
+    \item \textbf{Color}: 调整颜色饱和度。
+
+    \item \textbf{Brightness}: 调整亮度：
+    \[
+    I'(x, y) = I(x, y) + \beta
+    \]
+
+    \item \textbf{Solarize}: 反转高于某阈值 $T$ 的像素值：
+    \[
+    I'(x, y) = 
+    \begin{cases} 
+    I(x, y) & \text{if } I(x, y) < T \\
+    255 - I(x, y) & \text{if } I(x, y) \geq T
+    \end{cases}
+    \]
+\end{enumerate}
 
 \section{实验步骤与结果分析}
 \subsection{在cifar10上用PyTorch训练两层神经网络分类器}
@@ -525,5 +707,223 @@ TensorBoard日志图片如下：
   \caption{训练20个epochs的TensorBoard日志图像，在验证集上的最优准确率为第19个epoch时的84.48\%}
   \label{fig-1}
 \end{figure}
+
+\subsection{在cifar10上用WideResNet+AutoAugment训练}
+这一次，我参考了GitHub上\href{https://github.com/4uiiurz1/pytorch-auto-augment/tree/master}{pytorch-auto-augment}仓库的代码，
+使用了WideResNet和AutoAugment进行训练，并加了L2范数正则项，和余弦学习率调整，训练120个epoch，在验证集上最好能达到96.44\%的准确率。
+
+首先演示Augment数据增强效果图：
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{../code/figures/grid_augment.png}
+  \caption{训练集上不同图片增强后的效果}
+\end{figure}
+
+演示验证集上单张图片随机增强后的效果图：
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{../code/figures/single_augment.png}
+  \caption{验证集上同一张图片增强后的效果，左上角为原始图片}
+\end{figure}
+
+代码非常简单，可以直接使用如下代码构建图像变换函数，从而作用在数据集上，最后用matplotlib可视化变换效果即可：
+\begin{pythoncode}
+from torchvision.transforms.autoaugment import AutoAugment, AutoAugmentPolicy
+
+transform = AutoAugment(AutoAugmentPolicy.CIFAR10)  # 创建变换
+
+# 作用于数据集上
+train_dataset = datasets.CIFAR10(root='./data', train=True, transform=transform, download=True)  
+
+def grid_augment():
+  train_iter = iter(train_dataset)
+  r = 6
+  c = 10
+  figure, axs = plt.subplots(r, c, figsize=(10, 6))
+
+  for i in range(r):
+    for j in range(c):
+      img = next(train_iter)[0]
+      ax: Axes = axs[i,j]
+      ax.set_axis_off()
+      ax.imshow(img)
+  plt.tight_layout()
+  plt.savefig(path_figures / "grid_augment.png", dpi=100)
+  plt.show()
+\end{pythoncode}
+
+学会数据增强后，类似之前训练模型的方法，只需简单修改即可得到训练代码：
+\begin{pythoncode}
+import time
+from pathlib import Path
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
+from torch.utils.tensorboard.writer import SummaryWriter
+from torchvision.transforms.autoaugment import AutoAugment, AutoAugmentPolicy
+from wide_resnet import WideResNet
+
+# Tensorbaord日志
+path_log = Path(f"./logs/{time.strftime('%Y%m%d-%H%M%S')}-wide-resnet")
+writer = SummaryWriter(path_log)
+
+# 检查是否有可用 GPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
+# 超参数设置
+batch_size = 128
+learning_rate = 0.1
+momentum = 0.9
+weight_decay = 1e-4
+num_epochs = 120
+autoaugment = True
+
+# 数据增强和预处理
+transform_train = transforms.Compose([
+  transforms.RandomCrop(32, padding=4),
+  transforms.RandomHorizontalFlip(),
+  *([AutoAugment(AutoAugmentPolicy.CIFAR10)] if autoaugment else []),
+  transforms.ToTensor(),
+  transforms.Normalize((0.4914, 0.4822, 0.4465),
+                      (0.2023, 0.1994, 0.2010)),
+])
+
+transform_test = transforms.Compose([
+  transforms.ToTensor(),
+  transforms.Normalize((0.5071, 0.4867, 0.4408),
+                       (0.2675, 0.2565, 0.2761)),
+])
+
+train_dataset = datasets.CIFAR10(root='./data', train=True, transform=transform_train, download=True)
+test_dataset = datasets.CIFAR10(root='./data', train=False, transform=transform_test, download=True)
+
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=8)
+
+# 初始化模型、损失函数和优化器
+model = WideResNet(depth=28, width=10, num_classes=10).to(device)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=weight_decay)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, len(train_loader) * num_epochs)
+# scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, [60, 120, 160], 0.2)
+global_step = 0
+best_eval_acc = 0
+
+# 训练模型
+for epoch in range(num_epochs):
+  model.train()
+  for batch_idx, (data, target) in enumerate(train_loader):
+    data, target = data.to(device), target.to(device)
+
+    # 前向传播
+    outputs = model(data)
+    loss = criterion(outputs, target)
+    _, predicted = torch.max(outputs, 1)
+    acc = (target == predicted).sum().item() / batch_size
+
+    # 反向传播
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+    scheduler.step()
+    global_step += 1
+
+    if (batch_idx + 1) % 100 == 0:
+      writer.add_scalar("chart/loss", loss.item(), global_step)
+      writer.add_scalar("chart/train_acc", acc, global_step)
+      writer.add_scalar("chart/learning_rate", scheduler.get_last_lr()[0], global_step)
+      print(f"Epoch [{epoch + 1}/{num_epochs}], Step [{batch_idx + 1}/{len(train_loader)}], Loss: {loss.item():.4f}, Acc: {acc:.4f}")
+
+  # scheduler.step()
+
+  # 测试模型
+  model.eval()
+  correct = 0
+  total = 0
+  with torch.no_grad():
+    for data, target in test_loader:
+      data, target = data.to(device), target.to(device)
+      outputs = model(data)
+      _, predicted = torch.max(outputs.data, 1)
+      total += target.size(0)
+      correct += (predicted == target).sum().item()
+
+  eval_acc = correct / total
+  print(f"Test Accuracy: {100 * eval_acc:.2f}%")
+  writer.add_scalar("chart/eval_acc", eval_acc, global_step)
+
+  if eval_acc > best_eval_acc:
+    best_eval_acc = eval_acc
+    # 保存最优eval模型
+    path_save_model = f"cifar10_wide_resnet_model_best_eval.pth"
+    torch.save(model.state_dict(), path_log / path_save_model)
+    print(f"Best eval model ({100*eval_acc:.2f}%) saved as {path_log / path_save_model}")
+
+# 保存模型
+path_save_model = f"cifar10_wide_resnet_model_{global_step}.pth"
+torch.save(model.state_dict(), path_log / path_save_model)
+print(f"Last model saved as {path_log / path_save_model}")
+print(f"Best eval accuracy {100 * best_eval_acc:.2f}%")
+\end{pythoncode}
+TensorBoard日志图片如下
+\begin{figure}[H]
+  \centering
+  \subfigure[损失函数图像]{\includegraphics[width=0.32\textwidth]{../code/figures/3_loss.png}}
+  \subfigure[训练中准确率图像]{\includegraphics[width=0.32\textwidth]{../code/figures/3_train_acc.png}}
+  \subfigure[训练中准确率图像]{\includegraphics[width=0.32\textwidth]{../code/figures/3_eval_acc.png}}
+  \setlength{\abovecaptionskip}{0ex}  % 如果使用了minted会增大图像与标题间距需要进行缩小
+  \caption{训练120个epochs的TensorBoard日志图像，在验证集上的最优准确率为第116个epoch时的96.44\%}
+  \label{fig-1}
+\end{figure}\vspace{-2ex}
+
+\section{总结}
+\begin{table}[!h]
+  \renewcommand{\arraystretch}{1.2}
+  \centering
+  \caption{PyTorch在CIFAR10数据集上模型性能对比表} \label{tabel-yolo} \vspace{2mm}
+  \begin{tabularx}{\textwidth} {
+   >{\centering\arraybackslash}X 
+   >{\centering\arraybackslash}X
+   >{\centering\arraybackslash}X
+   >{\centering\arraybackslash}X
+   >{\centering\arraybackslash}X
+   >{\centering\arraybackslash}X
+   >{\centering\arraybackslash}X
+   >{\centering\arraybackslash}X
+  }
+  % \toprule[1.5pt]
+  \hline
+  网络模型&学习率调整&L2正则&数据增强&总epoch&验证集最优epoch&验证集最优准确率&训练集最优准确率\\
+  \hline
+  % \midrule[1pt]
+  两层全连接&无&无&无&20&11&52.54\%&85.94\%\\
+  3层卷积网络&无&无&裁剪、水平翻转、色彩抖动&20&19&84.48\%&93.75\%\\
+  WidResNet&两段变换&$10^{-4}$&无&120&71&94.91\%&100\%\\
+  WidResNet&Cosine&$10^{-4}$&无&120&115&94.86\%&100\%\\
+  WidResNet&Cosine&$10^{-4}$&Auto-Augment&120&116&\textbf{96.44\%}&99.22\%\\
+  \hline
+  % \bottomrule[1.5pt]
+  \end{tabularx}
+\end{table}
+
+代码使用说明，上述三个报告分别对应代码\pythoninline{1_relu.py}，\pythoninline{2_mish.py}，\pythoninline{3_wide_resnet.py}，
+直接执行代码即可开始训练，TensorBaord查看方式：\add
+\begin{pythoncode}
+# 安装tensorboard
+pip install tensorboard
+# 进入终端执行
+tensorboard --logdir ./logs
+\end{pythoncode}
+
+\paragraph{软件说明}
+使用的Python版本为3.11（任何3.8以上版本均可），
+PyTorch版本为2.5.1-cuda（任何PyTorch版本均可）。
+
+\paragraph{硬件说明}使用的CPU为AMD 5700X，显卡为RTX-4080，
+训练上述三个模型分别用时1m27s，5m23s，2h11m58s。
 
 \end{document}
