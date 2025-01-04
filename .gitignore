@@ -8,3 +8,4 @@ _minted*
 data
 *.pth
 __pycache__
+.vscode
